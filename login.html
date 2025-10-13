@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login — Event</title>
+
+  <!-- Bootstrap 5 (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
+  <style>
+    /* Estilos propios mínimos para mejor presentación */
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(19, 38, 63, 0.08);
+    }
+
+    .brand {
+      font-weight: 700;
+      color: #2b6cb0;
+      letter-spacing: 0.4px;
+    }
+
+    .small-muted {
+      font-size: .85rem;
+      color: #6b7280;
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 420px) {
+      .card { margin: 16px; }
+    }
+
+    /* Highlight consistent with user's preference */
+    mark { background: #fff59d; padding: .05rem .15rem; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+  <main class="card p-4">
+    <div class="text-center mb-3">
+      <img src="assets/img/logo.png" alt="Logo" style="height:44px;object-fit:contain" onerror="this.style.display='none'">
+      <h4 class="mt-2 brand">EventHub</h4>
+    </div>
+
+    <form id="loginForm" novalidate>
+      <div class="mb-3">
+        <label for="inputEmail" class="form-label">Email</label>
+        <input type="email" class="form-control" id="inputEmail" placeholder="tu@email.com" required>
+        <div class="invalid-feedback">Ingresá un email válido.</div>
+      </div>
+
+      <div class="mb-3">
+        <label for="inputPassword" class="form-label">Contraseña</label>
+        <div class="input-group">
+          <input type="password" class="form-control" id="inputPassword" placeholder="Contraseña" required>
+          <button class="btn btn-outline-secondary" type="button" id="togglePwd" aria-label="Mostrar contraseña">
+            <i class="bi bi-eye"></i>
+          </button>
+          <div class="invalid-feedback">Ingresá la contraseña.</div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <a href="#" id="forgotLink" data-bs-toggle="modal" data-bs-target="#forgotModal" class="small-muted">¿Olvidaste tu contraseña?</a>
+        </div>
+      </div>
+
+      <div id="alertContainer" class="mb-2" aria-live="polite"></div>
+
+      <button id="btnLogin" class="btn btn-primary w-100" type="submit">Ingresar</button>
+
+      <div class="text-center mt-3 small-muted">
+        ¿No tenés cuenta? <a href="#" id="createAccount">Crear usuario</a>
+      </div>
+    </form>
+  </main>
+
+  <!-- Modal: Recuperar contraseña -->
+  <div class="modal fade" id="forgotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="forgotForm" class="p-3">
+          <div class="modal-header">
+            <h5 class="modal-title">Recuperar contraseña</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small-muted">Ingresá tu email y te enviaremos un enlace para restablecer la contraseña.</p>
+            <div class="mb-3">
+              <label for="forgotEmail" class="form-label">Email</label>
+              <input type="email" class="form-control" id="forgotEmail" required>
+              <div class="invalid-feedback">Ingresá un email válido.</div>
+            </div>
+            <div id="forgotAlert" aria-live="polite"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            <button type="submit" class="btn btn-primary">Enviar enlace</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap + JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // --- CONFIG / constantes ---
+    const MAX_ATTEMPTS = 3;
+    const LOCK_MINUTES = 15; // bloqueo tras 3 intentos fallidos
+    const API_LOGIN = '/api/auth/login'; // endpoint real (ajustar)
+    const API_FORGOT = '/api/auth/forgot'; // endpoint real (ajustar)
+
+    // --- Helpers ---
+    const $ = (id) => document.getElementById(id);
+    const showAlert = (text, type = 'danger') => {
+      $('alertContainer').innerHTML = `
+        <div class="alert alert-${type} py-2" role="alert">${text}</div>
+      `;
+    };
+    const clearAlert = () => { $('alertContainer').innerHTML = ''; };
+
+    // Lock state in localStorage (keyed by origin to allow multiple environments)
+    const storageKey = (k) => `eventhub_${location.hostname}_${k}`;
+
+    function getLockInfo() {
+      const data = localStorage.getItem(storageKey('login_lock'));
+      return data ? JSON.parse(data) : { attempts: 0, lockedUntil: null };
+    }
+    function setLockInfo(obj) {
+      localStorage.setItem(storageKey('login_lock'), JSON.stringify(obj));
+    }
+
+    // Format remaining time
+    function msToTime(ms) {
+      const total = Math.max(0, Math.floor(ms/1000));
+      const min = Math.floor(total / 60);
+      const sec = total % 60;
+      return `${min}:${String(sec).padStart(2,'0')}`;
+    }
+
+    // --- UI wiring ---
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginForm = $('loginForm');
+      const btnLogin = $('btnLogin');
+      const togglePwd = $('togglePwd');
+
+      // show lock state on load
+      refreshLockUI();
+
+      // toggle password visibility
+      togglePwd.addEventListener('click', () => {
+        const p = $('inputPassword');
+        p.type = p.type === 'password' ? 'text' : 'password';
+        togglePwd.innerHTML = p.type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+      });
+
+      // submit login
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearAlert();
+
+        const email = $('inputEmail').value.trim();
+        const password = $('inputPassword').value;
+
+        // simple client validation
+        if (!email || !password) {
+          if (!email) $('inputEmail').classList.add('is-invalid'); else $('inputEmail').classList.remove('is-invalid');
+          if (!password) $('inputPassword').classList.add('is-invalid'); else $('inputPassword').classList.remove('is-invalid');
+          return;
+        }
+        $('inputEmail').classList.remove('is-invalid');
+        $('inputPassword').classList.remove('is-invalid');
+
+        // check lock
+        const lock = getLockInfo();
+        if (lock.lockedUntil && new Date(lock.lockedUntil) > new Date()) {
+          const remain = msToTime(new Date(lock.lockedUntil) - new Date());
+          showAlert(`Usuario bloqueado. Intentá nuevamente en ${remain}.`, 'warning');
+          return;
+        }
+
+        // Disable button to prevent double submits
+        btnLogin.disabled = true;
+        btnLogin.textContent = 'Ingresando...';
+
+        try {
+          // Intentar llamar a la API real
+          const payload = { email, password };
+          let resp;
+          try {
+            resp = await fetch(API_LOGIN, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+              credentials: 'include' // si usás cookies de refresh
+            });
+          } catch (err) {
+            // no backend disponible -> caemos al mock
+            resp = null;
+          }
+
+          let success = false;
+          if (resp && resp.ok) {
+            const data = await resp.json();
+            // Aquí asumimos que la API devuelve { success: true, token: '...' } u object similar
+            success = true;
+            // Guardar token si corresponde (ejemplo)
+            if (data.token) {
+              // Para demo: lo guardamos en localStorage; en producción usar HttpOnly cookie (backend)
+              localStorage.setItem('eventhub_token', data.token);
+            }
+          } else if (resp && !resp.ok) {
+            // API respondió con error (401 etc)
+            success = false;
+          } else {
+            // MOCK: aceptar solo usuario demo para pruebas
+            // usuario/demo: test@example.com / password123
+            if (email.toLowerCase() === 'test@example.com' && password === 'password123') {
+              success = true;
+              localStorage.setItem('eventhub_token', 'MOCK_TOKEN_DEMO');
+            } else {
+              success = false;
+            }
+          }
+
+          if (success) {
+            // reset lock info
+            setLockInfo({ attempts: 0, lockedUntil: null });
+            showAlert('Ingreso exitoso. Redirigiendo...', 'success');
+            // redirigir a home (ajustar ruta)
+            setTimeout(() => location.href = 'index.html', 800);
+          } else {
+            // failed attempt
+            const cur = getLockInfo();
+            cur.attempts = (cur.attempts || 0) + 1;
+            if (cur.attempts >= MAX_ATTEMPTS) {
+              const until = new Date(Date.now() + LOCK_MINUTES * 60 * 1000);
+              cur.lockedUntil = until.toISOString();
+              showAlert(`Se alcanzaron ${MAX_ATTEMPTS} intentos fallidos. Usuario bloqueado ${LOCK_MINUTES} minutos.`, 'warning');
+            } else {
+              showAlert(`Credenciales inválidas. Intentos: ${cur.attempts}/${MAX_ATTEMPTS}`, 'danger');
+            }
+            setLockInfo(cur);
+            refreshLockUI();
+          }
+        } finally {
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Ingresar';
+        }
+      });
+
+      // Forgot password submit
+      $('forgotForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = $('forgotEmail').value.trim();
+        if (!email) {
+          $('forgotEmail').classList.add('is-invalid');
+          return;
+        } else $('forgotEmail').classList.remove('is-invalid');
+
+        const forgotAlert = $('forgotAlert');
+        forgotAlert.innerHTML = `<div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div> Enviando...`;
+
+        try {
+          let ok = false;
+          try {
+            const r = await fetch(API_FORGOT, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            ok = r.ok;
+          } catch (err) {
+            // fallback: simular envío exitoso
+            ok = true;
+          }
+
+          if (ok) {
+            forgotAlert.innerHTML = `<div class="alert alert-success py-2">Si el email existe, recibirás un enlace para restablecer la contraseña.</div>`;
+          } else {
+            forgotAlert.innerHTML = `<div class="alert alert-danger py-2">Error al solicitar recuperación. Intentá de nuevo.</div>`;
+          }
+        } finally {
+          setTimeout(()=> {
+            // cerramos modal después de 2s
+            const modalEl = document.getElementById('forgotModal');
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) bsModal.hide();
+            $('forgotAlert').innerHTML = '';
+            $('forgotEmail').value = '';
+          }, 2000);
+        }
+      });
+
+      // small: create account link handler (demo)
+      $('createAccount').addEventListener('click', (e) => {
+        e.preventDefault();
+        alert('Redirigir a la pantalla de registro (no implementada en este demo).');
+      });
+
+      // helper to refresh lock UI
+      function refreshLockUI() {
+        const lock = getLockInfo();
+        if (lock.lockedUntil && new Date(lock.lockedUntil) > new Date()) {
+          const msLeft = new Date(lock.lockedUntil) - new Date();
+          showLockCountdown(msLeft);
+        } else {
+          clearAlert();
+        }
+      }
+
+      // countdown UI
+      function showLockCountdown(msLeft) {
+        const interval = setInterval(() => {
+          const left = new Date(getLockInfo().lockedUntil) - new Date();
+          if (left <= 0) {
+            setLockInfo({ attempts: 0, lockedUntil: null });
+            clearInterval(interval);
+            clearAlert();
+            return;
+          }
+          showAlert(`Usuario bloqueado. Intentá nuevamente en ${msToTime(left)}.`, 'warning');
+        }, 1000);
+      }
+    });
+  </script>
+</body>
+</html>
