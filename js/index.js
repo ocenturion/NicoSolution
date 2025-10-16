@@ -32,7 +32,10 @@ async function fetchEvents() {
 function renderEvents(events) {
   const list = $("eventsList");
   list.innerHTML = "";
+  const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
   for (const evt of events) {
+    const inCart = cart.some(item => item.id === evt.id);
     const col = document.createElement("div");
     col.className = "col";
     col.innerHTML = `
@@ -55,11 +58,37 @@ function renderEvents(events) {
         </div>
         <div class="card-footer text-end">
           <a href="event-detail.html?id=${evt.id}" class="btn btn-sm btn-primary">Ver detalle</a>
-          <a class="btn btn-sm btn-secondary"><i class="bi bi-cart-plus"></i></a>
+          <a class="btn btn-sm ${inCart ? 'btn-success' : 'btn-secondary'} add-cart-btn" data-id="${evt.id}">
+            <i class="bi ${inCart ? 'bi-check' : 'bi-cart-plus'}"></i>
+          </a>
         </div>
       </div>`;
     list.appendChild(col);
   }
+
+  // Eventos de click
+  document.querySelectorAll('.add-cart-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      const id = parseInt(e.currentTarget.dataset.id);
+      const event = events.find(ev => ev.id === id);
+      let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+      const exists = cart.some(item => item.id === id);
+
+      if (!exists) {
+        cart.push(event);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        e.currentTarget.classList.replace('btn-secondary', 'btn-success');
+        e.currentTarget.innerHTML = '<i class="bi bi-cart-check"></i>';
+      } else {
+        // opcional: eliminar del carrito al volver a hacer click
+        cart = cart.filter(item => item.id !== id);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        e.currentTarget.classList.replace('btn-success', 'btn-secondary');
+        e.currentTarget.innerHTML = '<i class="bi bi-cart-plus"></i>';
+      }
+    });
+  });
 }
 
 function plotEvents(events) {
