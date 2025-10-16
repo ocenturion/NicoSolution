@@ -50,7 +50,7 @@
   <main class="card p-4">
     <div class="text-center mb-3">
       <img src="assets/img/logo.png" alt="Logo" style="height:44px;object-fit:contain" onerror="this.style.display='none'">
-      <h4 class="mt-2 brand">DORIAN</h4>
+      <h4 class="mt-2 brand text-danger">DORIAN</h4>
     </div>
 
     <form id="loginForm" novalidate>
@@ -82,7 +82,7 @@
       <button id="btnLogin" class="btn btn-primary w-100" type="submit">Ingresar</button>
 
       <div class="text-center mt-3 small-muted">
-        ¿No tenés cuenta? <a href="#" id="createAccount">Crear usuario</a>
+        ¿No tenés cuenta? <a href="register.html" id="createAccount">Crear usuario</a>
       </div>
     </form>
   </main>
@@ -221,8 +221,6 @@
 
       // small: create account link handler (demo)
       $('createAccount').addEventListener('click', (e) => {
-        e.preventDefault();
-        alert('Redirigir a la pantalla de registro (no implementada en este demo).');
       });
 
       // helper to refresh lock UI

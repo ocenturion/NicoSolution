@@ -1,8 +1,8 @@
-const API_EVENTS = '/api/events';
+const API_EVENTS = "/api/events";
 
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   await fetchEvents();
 });
@@ -10,9 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ---------- MAPA ----------
 let map;
 function initMap() {
-  map = L.map('map').setView([-34.6, -58.4], 12);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+  map = L.map("map").setView([-34.6, -58.4], 12);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "&copy; OpenStreetMap contributors",
   }).addTo(map);
 }
 
@@ -30,31 +30,32 @@ async function fetchEvents() {
 }
 
 function renderEvents(events) {
-  const list = $('eventsList');
-  list.innerHTML = '';
+  const list = $("eventsList");
+  list.innerHTML = "";
   for (const evt of events) {
-    const col = document.createElement('div');
-    col.className = 'col';
+    const col = document.createElement("div");
+    col.className = "col";
     col.innerHTML = `
-      <div class="card event-card p-3 shadow-sm">
+      <div class="card event-card shadow-sm">
         <div class="row">
-          <div class="col-md-5">
-            <img src="${evt.image_url || 'https://www.passline.com/imagenes/eventos/7d-damas-gratis-433436-rec.jpg'}" 
-             class="card-img-top rounded mb-3" 
-             alt="${evt.title}" 
-             height="300" width="55">
+          <div class="col-md-6">
+            <img src="${evt.image_url || "https://www.passline.com/imagenes/eventos/7d-damas-gratis-433436-rec.jpg"}" 
+              alt="${evt.title}" class="card-img-top" height="400" width="55">
           </div>
-          <div class="col-md-7">
+          <div class="col-md-6">
             <div class="card-body">
               <h6 class="card-title fw-bold">${evt.title}</h6>
               <p class="text-muted small mb-1">${evt.location_name}</p>
               <p class="small">${evt.description}</p>
               <div class="d-flex justify-content-between align-items-center mt-3">
                 <span class="fw-bold">$${evt.base_price}</span>
-                <a href="event-detail.html?id=${evt.id}" class="btn btn-sm btn-primary">Ver detalle</a>
               </div>
             </div>
           </div>
+        </div>
+        <div class="card-footer text-end">
+          <a href="event-detail.html?id=${evt.id}" class="btn btn-sm btn-primary">Ver detalle</a>
+          <a class="btn btn-sm btn-secondary"><i class="bi bi-cart-plus"></i></a>
         </div>
       </div>`;
     list.appendChild(col);
@@ -62,7 +63,7 @@ function renderEvents(events) {
 }
 
 function plotEvents(events) {
-  events.forEach(e => {
+  events.forEach((e) => {
     if (e.location_lat && e.location_lng) {
       L.marker([e.location_lat, e.location_lng])
         .addTo(map)
@@ -76,21 +77,21 @@ function mockEvents() {
   return [
     {
       id: 1,
-      title: 'Concierto Indie',
-      location_name: 'Club Central',
-      description: 'Bandas emergentes de la ciudad',
+      title: "Concierto Indie",
+      location_name: "Club Central",
+      description: "Bandas emergentes de la ciudad",
       base_price: 2500,
       location_lat: -34.6037,
-      location_lng: -58.3816
+      location_lng: -58.3816,
     },
     {
       id: 2,
-      title: 'Feria de Arte',
-      location_name: 'La Rural',
-      description: 'Exposición y talleres de arte contemporáneo',
+      title: "Feria de Arte",
+      location_name: "La Rural",
+      description: "Exposición y talleres de arte contemporáneo",
       base_price: 1800,
       location_lat: -34.5875,
-      location_lng: -58.4091
-    }
+      location_lng: -58.4091,
+    },
   ];
 }
