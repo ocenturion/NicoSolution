@@ -57,8 +57,8 @@ function renderEvents(events) {
           </div>
         </div>
         <div class="card-footer text-end">
-          <a href="event-detail.html?id=${evt.id}" class="btn btn-sm btn-primary">Ver detalle</a>
-          <a class="btn btn-sm ${inCart ? 'btn-success' : 'btn-secondary'} add-cart-btn" data-id="${evt.id}">
+          <a href="event-detail.html?id=${evt.id}" class="btn btn-primary">Ver detalle</a>
+          <a class="btn ${inCart ? 'btn-success' : 'btn-secondary'} add-cart-btn" data-id="${evt.id}">
             <i class="bi ${inCart ? 'bi-check' : 'bi-cart-plus'}"></i>
           </a>
         </div>
@@ -79,7 +79,7 @@ function renderEvents(events) {
         cart.push(event);
         localStorage.setItem('cart', JSON.stringify(cart));
         e.currentTarget.classList.replace('btn-secondary', 'btn-success');
-        e.currentTarget.innerHTML = '<i class="bi bi-cart-check"></i>';
+        e.currentTarget.innerHTML = '<i class="bi bi-check"></i>';
       } else {
         // opcional: eliminar del carrito al volver a hacer click
         cart = cart.filter(item => item.id !== id);
